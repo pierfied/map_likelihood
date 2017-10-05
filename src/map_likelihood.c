@@ -90,7 +90,8 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
 
                     // Compute the poisson contribution of this voxel.
                     double lambda = expected_N * f[ind1] * exp(y[y1]);
-                    poisson_contrib += log(lambda) - lambda - log_factorial(N[ind1]);
+                    poisson_contrib += N[ind1] * log(lambda) - lambda
+                                       - log_factorial(N[ind1]);
 
                     // Compute the gradient for the voxel.
                     grad[y1] = -neighbor_contrib + N[ind1] - lambda;
