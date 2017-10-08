@@ -72,6 +72,7 @@ num_burn = 1000
 epsilon = 0.1
 
 # Run the sampler.
+# y_photo = np.random.randn(n_side ** 3)
 y0 = np.random.randn(n_side ** 3).ctypes.data_as(c_p_double)
 y0 = y_photo.ctypes.data_as(c_p_double)
 results = sampler(y0, args, num_samps, num_steps, num_burn, epsilon)
@@ -88,16 +89,27 @@ chain = np.array([[results.samples[i][j] for j in range(num_params)]
                   for i in range(num_samps)])
 
 c = ChainConsumer()
-samp_params = np.random.choice(num_params,5)
 c.add_chain(chain)
 c.configure(sigma2d=False)
-# fig = c.plotter.plot(figsize='column',truth=y_true.ravel()[samp_params])
-# plt.show()
 
 bounds = c.analysis.get_summary()
 y_mle = [b[1] for b in bounds.values()]
 
 plt.clf()
-plt.scatter(y_true,y_photo)
-plt.scatter(y_true,y_mle)
+plt.scatter(y_true,y_photo,label='$y_0$')
+plt.scatter(y_true,y_mle,label='$y_{MLE}$')
+plt.xlabel('$y_{true}$')
+plt.ylabel('$y_{samp}$')
+plt.legend()
+plt.tight_layout()
+plt.savefig('scatter.png')
+plt.show()
+
+c = ChainConsumer()
+samp_params = np.random.choice(num_params,5)
+c.add_chain(chain[:,samp_params])
+c.configure(sigma2d=False)
+fig = c.plotter.plot(figsize='column',truth=y_true.ravel()[samp_params])
+# plt.tight_layout()
+plt.savefig('corner.png')
 plt.show()

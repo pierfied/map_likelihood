@@ -44,6 +44,12 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
     int num_params = args->num_params;
     double *grad = malloc(sizeof(double) * num_params);
 
+    int log_fac_lim = 1000;
+    double log_fac[log_fac_lim];
+    for (int i = 0; i < log_fac_lim; i++) {
+        log_fac[i] = log_factorial(i);
+    }
+
     double normal_contrib = 0;
     double poisson_contrib = 0;
 #pragma omp parallel for
@@ -83,19 +89,21 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                     }
                 }
 
+                // Compute the mean of the Poisson term.
+                double lambda = expected_N * f[ind1] * exp(y[y1]);
+
 #pragma omp critical
                 {
                     // Compute the total contribution of this voxel to the normal.
                     normal_contrib += (y[y1] - mu) * neighbor_contrib;
 
-                    // Compute the poisson contribution of this voxel.
-                    double lambda = expected_N * f[ind1] * exp(y[y1]);
+                    // Compute the Poisson contribution of this voxel.
                     poisson_contrib += N[ind1] * log(lambda) - lambda
-                                       - log_factorial(N[ind1]);
-
-                    // Compute the gradient for the voxel.
-                    grad[y1] = -neighbor_contrib + N[ind1] - lambda;
+                                       - log_fac[lround(N[ind1])];
                 }
+
+                // Compute the gradient for the voxel.
+                grad[y1] = -neighbor_contrib + N[ind1] - lambda;
             }
         }
     }
