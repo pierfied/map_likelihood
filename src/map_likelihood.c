@@ -8,8 +8,9 @@
 #include <stdlib.h>
 #include <omp.h>
 
-SampleChain sample_map(double *y0, LikelihoodArgs args, int num_samps,
-                       int num_steps, int num_burn, double epsilon) {
+SampleChain sample_map(double *y0, double *m, LikelihoodArgs args,
+                       int num_samps, int num_steps, int num_burn,
+                       double epsilon) {
     HMCArgs hmc_args;
     hmc_args.log_likelihood = map_likelihood;
     hmc_args.likelihood_args = &args;
@@ -19,6 +20,7 @@ SampleChain sample_map(double *y0, LikelihoodArgs args, int num_samps,
     hmc_args.num_burn = num_burn;
     hmc_args.epsilon = epsilon;
     hmc_args.x0 = y0;
+    hmc_args.m = m;
 
     SampleChain chain = hmc(hmc_args);
 
