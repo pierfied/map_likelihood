@@ -65,28 +65,17 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
 
                 // Loop over neighbors.
                 double neighbor_contrib = 0;
-                for (int a = -1; a < 2; a++) {
-                    for (int b = -1; b < 2; b++) {
-                        for (int c = -1; c < 2; c++) {
-                            // Check the bounds.
-                            if ((i + a) < 0 || (i + a) >= nx || (j + b) < 0 ||
-                                (j + b) >= ny || (k + c) < 0 || (k + c) >= nz)
-                                continue;
-
+                for (int a = 0; a < nx; a++) {
+                    for (int b = 0; b < ny; b++) {
+                        for (int c = 0; c < nz; ++c) {
                             // Check that this neighbor is high-occupancy.
-                            int ind2 = (i + a) * ny * nz + (j + b) * nz + k + c;
+                            int ind2 = a * ny * nz + b * nz + c;
                             if (y_inds[ind2] < 0) continue;
                             int y2 = y_inds[ind2];
 
-                            // Calculate the number of dimensions off from
-                            // the center voxel.
-                            int num_off = 0;
-                            if (a != 0) num_off++;
-                            if (b != 0) num_off++;
-                            if (c != 0) num_off++;
-
                             // Compute the neighbor contribution.
-                            neighbor_contrib += inv_cov[num_off] * (y[y2] - mu);
+                            int ic_ind = ind1 * nx * ny * nz + ind2;
+                            neighbor_contrib += inv_cov[ic_ind] * (y[y2] - mu);
                         }
                     }
                 }
