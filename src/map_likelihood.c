@@ -64,6 +64,7 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                 int y1 = y_inds[ind1];
 
                 // Loop over neighbors.
+                double self_contrib = 0;
                 double neighbor_contrib = 0;
                 for (int a = -1; a < 2; a++) {
                     for (int b = -1; b < 2; b++) {
@@ -86,7 +87,11 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                             if (c != 0) num_off++;
 
                             // Compute the neighbor contribution.
-                            neighbor_contrib += inv_cov[num_off] * (y[y2] - mu);
+                            if(num_off == 0){
+                                self_contrib = inv_cov[num_off] * (y[y2] - mu);
+                            }else {
+                                neighbor_contrib += inv_cov[num_off] * (y[y2] - mu);
+                            }
                         }
                     }
                 }
@@ -97,7 +102,8 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
 #pragma omp critical
                 {
                     // Compute the total contribution of this voxel to the normal.
-                    normal_contrib += (y[y1] - mu) * neighbor_contrib;
+                    normal_contrib += (y[y1] - mu) * (self_contrib + neighbor_contrib) +
+                            neighbor_contrib * neighbor_contrib;
 
                     // Compute the Poisson contribution of this voxel.
                     poisson_contrib += N[ind1] * log(lambda) - lambda
