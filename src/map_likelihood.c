@@ -54,7 +54,7 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
 
     double corr[4];
     double var = cov[0];
-    for (int i = 0; i < 0; i++) {
+    for (int i = 0; i < 4; i++) {
         corr[i] = cov[i] / var;
     }
 
@@ -93,9 +93,9 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                             if (c != 0) num_off++;
 
                             // Compute the neighbor contribution.
-                            if (num_off == 0){
+                            if (num_off == 0) {
                                 self_contrib = (y[y2] - mu);
-                            }else {
+                            } else {
                                 neighbor_contrib += corr[num_off] * (y[y2] - mu);
                             }
                         }
