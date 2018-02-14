@@ -116,11 +116,11 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                 }
 
                 // Compute the gradient for the voxel.
-                grad[y1] = -var * (self_contrib - neighbor_contrib) + N[ind1] - lambda;
+                grad[y1] = -1./var * (self_contrib - neighbor_contrib) + N[ind1] - lambda;
             }
         }
     }
-    normal_contrib *= -0.5 * var;
+    normal_contrib *= -0.5 / var;
 
     Hamiltonian likelihood;
     likelihood.log_likelihood = normal_contrib + poisson_contrib;
