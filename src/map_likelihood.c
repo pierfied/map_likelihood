@@ -60,6 +60,7 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
 
     double normal_contrib = 0;
     double poisson_contrib = 0;
+    double Sx_vec[num_params];
 #pragma omp parallel for
     for (int i = 0; i < nx; i++) {
         for (int j = 0; j < ny; j++) {
@@ -102,13 +103,16 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                     }
                 }
 
+                Sx_vec[y1] = neighbor_contrib;
+
                 // Compute the mean of the Poisson term.
                 double lambda = expected_N * f[ind1] * exp(y[y1]);
 
 #pragma omp critical
                 {
                     // Compute the total contribution of this voxel to the normal.
-                    normal_contrib += (y[y1] - mu) * (self_contrib - neighbor_contrib);
+                    normal_contrib += (y[y1] - mu) * (self_contrib - neighbor_contrib
+                                                     + neighbor_contrib * neighbor_contrib);
 
                     // Compute the Poisson contribution of this voxel.
                     poisson_contrib += N[ind1] * log(lambda) - lambda
@@ -116,11 +120,56 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                 }
 
                 // Compute the gradient for the voxel.
-                grad[y1] = -1./var * (self_contrib - neighbor_contrib) + N[ind1] - lambda;
+                grad[y1] = -1. / var * (self_contrib - neighbor_contrib) + N[ind1] - lambda;
             }
         }
     }
     normal_contrib *= -0.5 / var;
+
+#pragma omp parallel for
+    for (int i = 0; i < nx; i++) {
+        for (int j = 0; j < ny; j++) {
+            for (int k = 0; k < nz; k++) {
+                // Check that this is a high occupancy voxel.
+                int ind1 = i * ny * nz + j * nz + k;
+                if (y_inds[ind1] < 0) continue;
+                int y1 = y_inds[ind1];
+
+                // Loop over neighbors.
+                double grad_contrib = 0;
+                for (int a = -1; a < 2; a++) {
+                    for (int b = -1; b < 2; b++) {
+                        for (int c = -1; c < 2; c++) {
+                            // Check the bounds.
+                            if ((i + a) < 0 || (i + a) >= nx || (j + b) < 0 ||
+                                (j + b) >= ny || (k + c) < 0 || (k + c) >= nz)
+                                continue;
+
+                            // Check that this neighbor is high-occupancy.
+                            int ind2 = (i + a) * ny * nz + (j + b) * nz + k + c;
+                            if (y_inds[ind2] < 0) continue;
+                            int y2 = y_inds[ind2];
+
+                            // Calculate the number of dimensions off from
+                            // the center voxel.
+                            int num_off = 0;
+                            if (a != 0) num_off++;
+                            if (b != 0) num_off++;
+                            if (c != 0) num_off++;
+
+                            // Compute the neighbor contribution.
+                            if (num_off != 0) {
+                                grad_contrib += corr[num_off] * Sx_vec[y2];
+                            }
+                        }
+                    }
+                }
+
+                // Compute the gradient for the voxel.
+                grad[y1] += -1. / var * grad_contrib;
+            }
+        }
+    }
 
     Hamiltonian likelihood;
     likelihood.log_likelihood = normal_contrib + poisson_contrib;
