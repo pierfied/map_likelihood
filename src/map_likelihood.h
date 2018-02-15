@@ -16,7 +16,7 @@ typedef struct {
     int ny;
     int nz;
     double mu;
-    double *inv_cov;
+    double *cov;
     double expected_N;
 } LikelihoodArgs;
 

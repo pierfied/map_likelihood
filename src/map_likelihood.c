@@ -31,7 +31,7 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
     LikelihoodArgs *args = (LikelihoodArgs *) args_ptr;
 
     double mu = args->mu;
-    double *inv_cov = args->inv_cov;
+    double *cov = args->cov;
     double expected_N = args->expected_N;
 
     int nx = args->nx;
@@ -50,6 +50,12 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
     double log_fac[log_fac_lim];
     for (int i = 0; i < log_fac_lim; i++) {
         log_fac[i] = log_factorial(i);
+    }
+
+    double corr[4];
+    double var = cov[0];
+    for (int i = 0; i < 4; i++) {
+        corr[i] = cov[i] / var;
     }
 
     double normal_contrib = 0;
@@ -87,10 +93,10 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                             if (c != 0) num_off++;
 
                             // Compute the neighbor contribution.
-                            if(num_off == 0){
-                                self_contrib = inv_cov[num_off] * (y[y2] - mu);
-                            }else {
-                                neighbor_contrib += inv_cov[num_off] * (y[y2] - mu);
+                            if (num_off == 0) {
+                                self_contrib = (y[y2] - mu);
+                            } else {
+                                neighbor_contrib += corr[num_off] * (y[y2] - mu);
                             }
                         }
                     }
@@ -102,8 +108,7 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
 #pragma omp critical
                 {
                     // Compute the total contribution of this voxel to the normal.
-                    normal_contrib += (y[y1] - mu) * (self_contrib + neighbor_contrib) +
-                            neighbor_contrib * neighbor_contrib;
+                    normal_contrib += (y[y1] - mu) * (self_contrib - neighbor_contrib);
 
                     // Compute the Poisson contribution of this voxel.
                     poisson_contrib += N[ind1] * log(lambda) - lambda
@@ -111,11 +116,11 @@ Hamiltonian map_likelihood(double *y, void *args_ptr) {
                 }
 
                 // Compute the gradient for the voxel.
-                grad[y1] = -neighbor_contrib + N[ind1] - lambda;
+                grad[y1] = -1./var * (self_contrib - neighbor_contrib) + N[ind1] - lambda;
             }
         }
     }
-    normal_contrib *= -0.5;
+    normal_contrib *= -0.5 / var;
 
     Hamiltonian likelihood;
     likelihood.log_likelihood = normal_contrib + poisson_contrib;
